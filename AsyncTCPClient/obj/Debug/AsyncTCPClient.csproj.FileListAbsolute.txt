@@ -1,0 +1,5 @@
+c:\users\tomicaj\documents\visual studio 2015\Projects\AsyncTCPClient\AsyncTCPClient\bin\Debug\AsyncTCPClient.exe.config
+c:\users\tomicaj\documents\visual studio 2015\Projects\AsyncTCPClient\AsyncTCPClient\bin\Debug\AsyncTCPClient.exe
+c:\users\tomicaj\documents\visual studio 2015\Projects\AsyncTCPClient\AsyncTCPClient\bin\Debug\AsyncTCPClient.pdb
+c:\users\tomicaj\documents\visual studio 2015\Projects\AsyncTCPClient\AsyncTCPClient\obj\Debug\AsyncTCPClient.exe
+c:\users\tomicaj\documents\visual studio 2015\Projects\AsyncTCPClient\AsyncTCPClient\obj\Debug\AsyncTCPClient.pdb
