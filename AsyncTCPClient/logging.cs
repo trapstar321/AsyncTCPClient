@@ -34,7 +34,6 @@ namespace AsyncTCPClient
     public class logging
     {
         private List<LogRecord> items = new List<LogRecord>();
-        private Timer timer = new Timer();
 
         private string _prefix = "";
         private FileStream fs;
@@ -42,54 +41,67 @@ namespace AsyncTCPClient
         private string file_base = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().GetName().CodeBase).Substring(6);
 
         private bool currently_versioning = false;
-        public delegate bool add_to_log_del(List<LogRecord> items);
-        private bool add_to_log_fnc(List<LogRecord> items)
+        public delegate bool add_to_log_del();
+        private bool add_to_log_fnc()
         {
-            if (fs.CanWrite)
+            while (true)
             {
-                StreamWriter s = new StreamWriter(fs);
-                foreach (LogRecord record in items)
+                if (fs.CanWrite)
                 {
-                    System.DateTime datum = DateTime.Now;
-
-                    switch (record.vrsta)
+                    List<LogRecord> tmp = new List<LogRecord>();
+                    lock (items)
                     {
-                        case log_vrste.greska:
-                            s.WriteLine(record.date.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + "ERROR" + "\t" + _prefix + " " + record.prefix + " " + record.opis);
-                            break;
-                        case log_vrste.info:
-                            s.WriteLine(record.date.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + "INFO" + "\t" + _prefix + " " + record.prefix + " " + record.opis);
-                            break;
-                        case log_vrste.warning:
-                            s.WriteLine(record.date.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + "WARNING" + "\t" + _prefix + " " + record.prefix + " " + record.opis);
-                            break;
-                            //Case FiskalS_interfaces.interf_classlogging.log_vrste.greska
-                            //    s.WriteLine(FormatDateTime(datum, DateFormat.GeneralDate) & vbTab & "ERROR" & vbTab & _prefix & " " & prefix & " " & opis)
-                            //Case FiskalS_interfaces.interf_classlogging.log_vrste.info
-                            //    s.WriteLine(FormatDateTime(datum, DateFormat.GeneralDate) & vbTab & "INFO" & vbTab & _prefix & " " & prefix & " " & opis)
-                            //Case FiskalS_interfaces.interf_classlogging.log_vrste.warning
-                            //    s.WriteLine(FormatDateTime(datum, DateFormat.GeneralDate) & vbTab & "WARNING" & vbTab & _prefix & " " & prefix & " " & opis)
+                        tmp.AddRange(items);
+                        items.Clear();
+                    }
+
+                    StreamWriter s = new StreamWriter(fs);
+                    foreach (LogRecord record in tmp)
+                    {
+                        System.DateTime datum = DateTime.Now;
+
+                        switch (record.vrsta)
+                        {
+                            case log_vrste.greska:
+                                string r = record.date.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + "ERROR" + "\t" + _prefix + " " + record.prefix + " " + record.opis;
+                                s.WriteLine(record);
+                                break;
+                            case log_vrste.info:
+                                r = record.date.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + "INFO" + "\t" + _prefix + " " + record.prefix + " " + record.opis;
+                                s.WriteLine(r);
+                                break;
+                            case log_vrste.warning:
+                                r = record.date.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + "WARNING" + "\t" + _prefix + " " + record.prefix + " " + record.opis;
+                                s.WriteLine(record.date.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + "WARNING" + "\t" + _prefix + " " + record.prefix + " " + record.opis);
+                                break;
+                                //Case FiskalS_interfaces.interf_classlogging.log_vrste.greska
+                                //    s.WriteLine(FormatDateTime(datum, DateFormat.GeneralDate) & vbTab & "ERROR" & vbTab & _prefix & " " & prefix & " " & opis)
+                                //Case FiskalS_interfaces.interf_classlogging.log_vrste.info
+                                //    s.WriteLine(FormatDateTime(datum, DateFormat.GeneralDate) & vbTab & "INFO" & vbTab & _prefix & " " & prefix & " " & opis)
+                                //Case FiskalS_interfaces.interf_classlogging.log_vrste.warning
+                                //    s.WriteLine(FormatDateTime(datum, DateFormat.GeneralDate) & vbTab & "WARNING" & vbTab & _prefix & " " & prefix & " " & opis)
+                        }
+                    }
+                    s.Flush();
+                    fs.Flush();
+                    bool filebig = false;
+                    if (fs.Length > 5000000)
+                    {
+                        filebig = true;
+                    }
+                    if (filebig == true & currently_versioning == false)
+                    {
+                        currently_versioning = true;
+                        generacijaplus();
+                        File.Copy(file_base + "\\log.txt", file_base + "\\log1.txt", true);
+                        fs.Close();
+                        File.Delete(file_base + "\\log.txt");
+                        fs = new FileStream(file_base + "\\log.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+                        currently_versioning = false;
                     }
                 }
-                s.Flush();
-                fs.Flush();
-                bool filebig = false;
-                if (fs.Length > 5000000)
-                {
-                    filebig = true;
-                }
-                if (filebig == true & currently_versioning == false)
-                {
-                    currently_versioning = true;
-                    generacijaplus();
-                    File.Copy(file_base + "\\log.txt", file_base + "\\log1.txt", true);
-                    fs.Close();
-                    File.Delete(file_base + "\\log.txt");
-                    fs = new FileStream(file_base + "\\log.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-                    currently_versioning = false;
-                }
+                System.Threading.Thread.Sleep(100);
             }
-            return true;
         }
         private void generacijaplus()
         {
@@ -118,40 +130,27 @@ namespace AsyncTCPClient
             return 0;
         }
 
-        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            List<LogRecord> tmp = new List<LogRecord>();
-            lock (items)
-            {
-                tmp.AddRange(items);
-                items.Clear();
-            }
-
-            add_to_log_del zapis = new add_to_log_del(add_to_log_fnc);
-            zapis.BeginInvoke(tmp, null, null);
-        }
-
         public logging(string prefix)
         {
             _prefix = prefix;
             fs = new FileStream(file_base + "\\log.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
 
-            timer.Interval += 100;
-            timer.Elapsed += Timer_Elapsed;
-            timer.Start();
+            add_to_log_del zapis = new add_to_log_del(add_to_log_fnc);
+            zapis.BeginInvoke(null, null);
         }
 
         public logging(string appName, string cash_register)
         {
             string filename = appName + "_" + cash_register + "_" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".txt";
             fs = new FileStream(filename, FileMode.Append, FileAccess.Write, FileShare.Read);
-            timer.Interval += 100;
-            timer.Elapsed += Timer_Elapsed;
-            timer.Start();
+
+            add_to_log_del zapis = new add_to_log_del(add_to_log_fnc);
+            zapis.BeginInvoke(null, null);
         }
 
         public void add_to_log(log_vrste vrsta, string opis, string prefix)
         {
+            Console.WriteLine(DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss.fff") + "\t" + vrsta + "\t" + _prefix + " " + prefix + " " + opis);
             lock (items)
             {
                 items.Add(new LogRecord(vrsta, opis, prefix));
