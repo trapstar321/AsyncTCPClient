@@ -40,7 +40,7 @@ namespace AsyncTCPClient
 
             File.Delete("log.txt");
 
-            log = new logging("");
+            log = new logging(DateTime.Now.ToString("yyyyMMddhhmmss"), "");
             io = new InputOutput(log);
         }
 
@@ -59,31 +59,25 @@ namespace AsyncTCPClient
             Send(new Message(24, new byte[] { 1, 2, 3, 4,5,6 }));*/
             connected.Set();
 
-            log.add_to_log(log_vrste.info, "BeginReceive", "AsyncTCPClient.cs ConnectCallback()");
-            this.connection.socket.BeginReceive(this.connection.bytes_read, 0, Connection.RBUFFER_SIZE, SocketFlags.None, new AsyncCallback(ReadCallback), this.connection);
+            log.add_to_log(log_vrste.info, "BeginReceive", "AsyncTCPClient.cs ConnectCallback()");            
+            this.connection.socket.BeginReceive(this.connection.tmp_rbuffer, 0, Connection.RBUFFER_SIZE, SocketFlags.None, new AsyncCallback(ReadCallback), this.connection);
         }
 
         private void Send(Message message)
         {
-            byte[] wbuffer;
-            lock (connection.wbuffer_lock)
+            lock (connection.write_lock)
             {
                 io.AddMessageToWriteBuffer(connection, message);
-                wbuffer = connection.GetWBuffer();
-            }
 
-            log.add_to_log(log_vrste.info, "BeginSend", "AsyncTCPClient.cs Send()");
-            lock (connection.sendLock)
-            {
-                if (connection.sendComplete)
+                if (connection.tmp_wbuffer.Length == 0)
                 {
-                    connection.sendComplete = false;                    
-                    if (wbuffer.Length == 0)
-                    {
-                        string s = "";
-                    }
-                    log.add_to_log(log_vrste.info, String.Format("Current buffer: {0}", io.ByteArrayToString(wbuffer)), "AsyncTCPClient.cs Send()");
-                    connection.socket.BeginSend(wbuffer, 0, wbuffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), connection);
+                    connection.CopyWBufferToTmp();
+                    log.add_to_log(log_vrste.info, "BeginSend", "AsyncTCPClient.cs Send()");
+
+                    byte[] tmp_wbuffer = connection.GetTmpWBuffer();
+
+                    log.add_to_log(log_vrste.info, String.Format("Current buffer: {0}", io.ByteArrayToString(tmp_wbuffer)), "AsyncTCPClient.cs Send()");
+                    connection.socket.BeginSend(tmp_wbuffer, 0, tmp_wbuffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), connection);
                 }
             }
         }
@@ -93,41 +87,27 @@ namespace AsyncTCPClient
             log.add_to_log(log_vrste.info, "EndSend", "AsyncTCPClient.cs SendCallback()");
             // Retrieve the socket from the state object.
             Connection connection = (Connection)ar.AsyncState;
-
-            lock (connection.sendLock)
-            {
-                connection.sendComplete = true;
-            }
-
             // Complete sending the data to the remote device.
             int bytesSent = connection.socket.EndSend(ar);
 
-            if (bytesSent == 0)
-            {
-                string s = "";
-            }
-
             //lock write buffer to make sure no new messages are added while handling end write
-            byte[] wbuffer;
-            lock (connection.wbuffer_lock)
+            lock (connection.write_lock)
             {
+                byte[] wbuffer;
+
                 io.EndWrite(connection, bytesSent);
                 wbuffer = connection.GetWBuffer();
-            }
-            log.add_to_log(log_vrste.info, String.Format("Sent {0} bytes to server.", bytesSent), "AsyncTCPClient.cs SendCallback()");
 
-                
-            if (wbuffer.Length > 0)
-            {
-                lock (connection.sendLock)
-                    connection.sendComplete = false;
-                if (wbuffer.Length == 0)
+                log.add_to_log(log_vrste.info, String.Format("Sent {0} bytes to client.", bytesSent), "AsyncTCPClient.cs SendCallback()");
+
+                if (wbuffer.Length > 0)
                 {
-                    string s = "";
+                    connection.CopyWBufferToTmp();
+                    wbuffer = connection.GetTmpWBuffer();
+                    log.add_to_log(log_vrste.info, String.Format("Current buffer: {0}", io.ByteArrayToString(wbuffer)), "AsyncTCPClient.cs SendCallback()");
+                    connection.socket.BeginSend(wbuffer, 0, wbuffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), connection);
                 }
-                log.add_to_log(log_vrste.info, String.Format("Current buffer: {0}", io.ByteArrayToString(wbuffer)), "AsyncTCPClient.cs SendCallback()");
-                connection.socket.BeginSend(wbuffer, 0, wbuffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), connection);
-            }            
+            }
         }
 
         public void ReadCallback(IAsyncResult ar)
@@ -155,7 +135,7 @@ namespace AsyncTCPClient
             //
             //{
             log.add_to_log(log_vrste.info, "BeginReceive", "AsyncTCPClient.cs ReadCallback()");
-            connection.socket.BeginReceive(connection.bytes_read, 0, Connection.RBUFFER_SIZE, SocketFlags.None,
+            connection.socket.BeginReceive(connection.tmp_rbuffer, 0, Connection.RBUFFER_SIZE, SocketFlags.None,
                 new AsyncCallback(ReadCallback), connection);
             //}
         }

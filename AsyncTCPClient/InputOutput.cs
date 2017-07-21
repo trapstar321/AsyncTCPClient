@@ -1,5 +1,4 @@
-﻿using AsyncTCPClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -37,12 +36,12 @@ namespace AsyncTCPClient
 
             log.add_to_log(log_vrste.info, String.Format("Handler {0}: buffer={1}", connection.uid, ByteArrayToString(rbuffer)), "InputOutput.cs EndRead()");
             log.add_to_log(log_vrste.info, String.Format("Handler {0}: read {1} bytes", connection.uid, bytesRead), "InputOutput.cs EndRead()");
-            log.add_to_log(log_vrste.info, String.Format("Handler {0}: read {1}", connection.uid, ByteArrayToString(new ArraySegment<byte>(connection.bytes_read, 0, bytesRead).ToArray())), "InputOutput.cs EndRead()");
+            log.add_to_log(log_vrste.info, String.Format("Handler {0}: read {1}", connection.uid, ByteArrayToString(new ArraySegment<byte>(connection.tmp_rbuffer, 0, bytesRead).ToArray())), "InputOutput.cs EndRead()");
 
             if (bytesRead == 0)
                 throw new Exception("Client disconnected");
 
-            connection.WriteRBuffer(connection.bytes_read, 0, bytesRead);
+            connection.WriteRBuffer(connection.tmp_rbuffer, 0, bytesRead);
             rbuffer = connection.GetRBuffer();
 
             int length = 0, left, start = 0;
@@ -118,13 +117,13 @@ namespace AsyncTCPClient
                 status = IOStatus.COMPLETE;
             }
 
-            connection.bytes_read = new byte[Connection.RBUFFER_SIZE];
+            connection.tmp_rbuffer = new byte[Connection.RBUFFER_SIZE];
             return readMessages;
         }
 
         public void EndWrite(Connection connection, int bytesSent)
-        {            
-            byte[] wbuffer = connection.GetWBuffer();
+        {
+            byte[] wbuffer = connection.GetTmpWBuffer();
             if (wbuffer.Length != 0)
             {
                 log.add_to_log(log_vrste.info, String.Format("Handler {0}: send {1} to client {2}", connection.uid, ByteArrayToString(wbuffer), connection), "InputOutput.cs EndWrite()");
@@ -134,8 +133,8 @@ namespace AsyncTCPClient
                     log.add_to_log(log_vrste.info, String.Format("Handler {0}: not whole buffer was sent for client {1}", connection.uid, connection), "InputOutput.cs EndWrite()");
                     log.add_to_log(log_vrste.info, String.Format("Handler {0}: sent {1} out of {2}", connection.uid, bytesSent, wbuffer.Length), "InputOutput.cs EndWrite()");
                     byte[] tmp = new ArraySegment<byte>(wbuffer, bytesSent, wbuffer.Length - bytesSent).ToArray();
-                    connection.ResetWBuffer();
-                    connection.WriteWBuffer(tmp, 0, tmp.Length);                        
+                    connection.ResetTmpWBuffer();
+                    connection.WriteTmpWBuffer(tmp, 0, tmp.Length);
                 }
                 else if (bytesSent == 0)
                 {
@@ -144,13 +143,13 @@ namespace AsyncTCPClient
                 else
                 {
                     log.add_to_log(log_vrste.info, String.Format("Handler {0}: whole buffer was sent for client {1}", connection.uid, connection), "InputOutput.cs EndWrite()");
-                    connection.ResetWBuffer();
+                    connection.ResetTmpWBuffer();
                 }
-            }            
+            }
         }
 
         public void AddMessageToWriteBuffer(Connection connection, Message message)
-        {            
+        {
             log.add_to_log(log_vrste.info, String.Format("Handler {0}: send message {1}", connection.uid, ByteArrayToString(message.data)), "InputOutput.cs EndWrite()");
 
             MemoryStream ms = new MemoryStream();
@@ -160,8 +159,8 @@ namespace AsyncTCPClient
 
             byte[] buffer = ms.ToArray();
 
-            log.add_to_log(log_vrste.info, String.Format("Handler {0}: add {1} to write buffer for client {1}", connection.uid, ByteArrayToString(buffer), connection), "InputOutput.cs EndWrite()");            
-            connection.WriteWBuffer(buffer, 0, buffer.Length);            
+            log.add_to_log(log_vrste.info, String.Format("Handler {0}: add {1} to write buffer for client {1}", connection.uid, ByteArrayToString(buffer), connection), "InputOutput.cs EndWrite()");
+            connection.WriteWBuffer(buffer, 0, buffer.Length);
             log.add_to_log(log_vrste.info, String.Format("Handler {0}: write buffer for {1} is {2}", connection.uid, connection, ByteArrayToString(connection.GetWBuffer())), "InputOutput.cs EndWrite()");
         }
 

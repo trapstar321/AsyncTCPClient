@@ -8,3 +8,4 @@ C:\Users\tomica\Documents\Visual Studio 2015\AsyncTCPClient\AsyncTCPClient\obj\D
 C:\Users\tomica\Documents\Visual Studio 2015\AsyncTCPClient\AsyncTCPClient\obj\Debug\AsyncTCPClient.pdb
 C:\Users\tomica\Documents\Visual Studio 2015\AsyncTCPClient\AsyncTCPClient\bin\Debug\AsyncTCPClient.exe
 C:\Users\tomica\Documents\Visual Studio 2015\AsyncTCPClient\AsyncTCPClient\bin\Debug\AsyncTCPClient.pdb
+C:\Users\tomicaj\documents\visual studio 2015\Projects\AsyncTCPClient\AsyncTCPClient\obj\Debug\AsyncTCPClient.csprojResolveAssemblyReference.cache

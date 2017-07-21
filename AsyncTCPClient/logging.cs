@@ -35,6 +35,8 @@ namespace AsyncTCPClient
     {
         private List<LogRecord> items = new List<LogRecord>();
 
+        private string filename;
+
         private string _prefix = "";
         private FileStream fs;
         private const int max_generations = 10;
@@ -93,10 +95,10 @@ namespace AsyncTCPClient
                     {
                         currently_versioning = true;
                         generacijaplus();
-                        File.Copy(file_base + "\\log.txt", file_base + "\\log1.txt", true);
+                        File.Copy(file_base + "\\"+filename+".txt", file_base + "\\"+filename+"1.txt", true);
                         fs.Close();
-                        File.Delete(file_base + "\\log.txt");
-                        fs = new FileStream(file_base + "\\log.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+                        File.Delete(file_base + "\\"+filename+".txt");
+                        fs = new FileStream(file_base + "\\"+filename+".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
                         currently_versioning = false;
                     }
                 }
@@ -109,13 +111,13 @@ namespace AsyncTCPClient
             int a = 0;
             if (find_last_log() >= max_generations)
             {
-                File.Delete(file_base + "\\log" + find_last_log() + ".txt");
+                File.Delete(file_base + "\\"+filename + find_last_log() + ".txt");
             }
             for (a = find_last_log(); a >= 1; a += -1)
             {
-                if (File.Exists(file_base + "\\log" + a + 1 + ".txt") == true)
-                    File.Delete(file_base + "\\log" + a + 1 + ".txt");
-                File.Move(file_base + "\\log" + a + ".txt", file_base + "\\log" + a + 1 + ".txt");
+                if (File.Exists(file_base + "\\"+filename + a + 1 + ".txt") == true)
+                    File.Delete(file_base + "\\"+filename + a + 1 + ".txt");
+                File.Move(file_base + "\\"+filename + a + ".txt", file_base + "\\"+filename + a + 1 + ".txt");
             }
         }
 
@@ -124,29 +126,30 @@ namespace AsyncTCPClient
             int a = 0;
             for (a = 1; a <= max_generations + 2; a++)
             {
-                if (File.Exists(file_base + "\\log" + a + ".txt") == false)
+                if (File.Exists(file_base + "\\"+filename + a + ".txt") == false)
                     return a - 1;
             }
             return 0;
         }
 
-        public logging(string prefix)
+        public logging(string filename, string prefix)
         {
+            this.filename = filename;
             _prefix = prefix;
-            fs = new FileStream(file_base + "\\log.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            fs = new FileStream(file_base + "\\"+filename+".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
 
             add_to_log_del zapis = new add_to_log_del(add_to_log_fnc);
             zapis.BeginInvoke(null, null);
         }
 
-        public logging(string appName, string cash_register)
+        /*public logging(string appName, string cash_register)
         {
-            string filename = appName + "_" + cash_register + "_" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".txt";
+            filename = appName + "_" + cash_register + "_" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".txt";
             fs = new FileStream(filename, FileMode.Append, FileAccess.Write, FileShare.Read);
 
             add_to_log_del zapis = new add_to_log_del(add_to_log_fnc);
             zapis.BeginInvoke(null, null);
-        }
+        }*/
 
         public void add_to_log(log_vrste vrsta, string opis, string prefix)
         {

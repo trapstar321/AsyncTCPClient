@@ -18,16 +18,15 @@ namespace AsyncTCPClient
         public int uid;
         public Socket socket;
 
-        public object wbuffer_lock = new object();
+        public object write_lock = new object();
+
+        public byte[] tmp_rbuffer = new byte[RBUFFER_SIZE];
         private MemoryStream rbuffer = new MemoryStream();
+
+        public MemoryStream tmp_wbuffer = new MemoryStream();
         private MemoryStream wbuffer = new MemoryStream();
 
-        public byte[] bytes_read = new byte[RBUFFER_SIZE];
-
         public int position;
-
-        public object sendLock = new object();
-        public bool sendComplete = true;
 
         public Connection(Socket socket)
         {
@@ -41,32 +40,54 @@ namespace AsyncTCPClient
 
         public byte[] GetRBuffer()
         {
-            return rbuffer.ToArray();            
+            return rbuffer.ToArray();
         }
 
         public void ResetRBuffer()
         {
-            rbuffer = new MemoryStream();         
+            rbuffer = new MemoryStream();
         }
 
         public void WriteRBuffer(byte[] data, int start, int length)
         {
-            rbuffer.Write(data, start, length);         
+            rbuffer.Write(data, start, length);
         }
 
         public byte[] GetWBuffer()
         {
-            return wbuffer.ToArray();            
+            return wbuffer.ToArray();
         }
 
         public void ResetWBuffer()
         {
-            wbuffer = new MemoryStream();         
+            wbuffer = new MemoryStream();
         }
 
         public void WriteWBuffer(byte[] data, int start, int length)
         {
-            wbuffer.Write(data, start, length);         
+            wbuffer.Write(data, start, length);
+        }
+
+        public byte[] GetTmpWBuffer()
+        {
+            return tmp_wbuffer.ToArray();
+        }
+
+        public void ResetTmpWBuffer()
+        {
+            tmp_wbuffer = new MemoryStream();
+        }
+
+        public void WriteTmpWBuffer(byte[] data, int start, int length)
+        {
+            tmp_wbuffer.Write(data, start, length);
+        }
+
+        public void CopyWBufferToTmp()
+        {
+            byte[] tmp = wbuffer.ToArray();
+            tmp_wbuffer.Write(tmp, 0, tmp.Length);
+            ResetWBuffer();
         }
 
         public override string ToString()
